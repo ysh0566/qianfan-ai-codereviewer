@@ -3,7 +3,7 @@ import * as core from "@actions/core";
 import { Octokit } from "@octokit/rest";
 import parseDiff, { Chunk, File } from "parse-diff";
 import minimatch from "minimatch";
-import {Completions} from "@baiducloud/qianfan/src"
+import {ChatCompletion} from "@baiducloud/qianfan/src"
 import {RespBase} from "@baiducloud/qianfan/src/interface"
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
@@ -13,7 +13,7 @@ const QIANFAN_MODEL: string = core.getInput("QIANFAN_MODEL");
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
-const qianfan = new Completions({ QIANFAN_AK: QIANFAN_AK, QIANFAN_SK: QIANFAN_SK});
+const qianfan = new ChatCompletion({ QIANFAN_AK: QIANFAN_AK, QIANFAN_SK: QIANFAN_SK});
 
 interface PRDetails {
   owner: string;
@@ -61,19 +61,11 @@ async function analyzeCode(
   prDetails: PRDetails
 ): Promise<Array<{ body: string; path: string; line: number }>> {
   const comments: Array<{ body: string; path: string; line: number }> = [];
-  const prompt = `Your task is to review pull requests. Instructions:
-- Provide the response in following JSON format:  {"reviews": [{"lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
-- Do not give positive comments or compliments.
-- Provide comments and suggestions ONLY if there is something to improve, otherwise "reviews" should be an empty array.
-- Write the comment in GitHub Markdown format.
-- Use the given description only for the overall context and only comment the code.
-- IMPORTANT: NEVER suggest adding comments to the code.
-`
   for (const file of parsedDiff) {
     if (file.to === "/dev/null") continue; // Ignore deleted files
     for (const chunk of file.chunks) {
       const message = createMessage(file, chunk, prDetails);
-      const aiResponse = await getAIResponse(prompt, message);
+      const aiResponse = await getAIResponse(message);
       if (aiResponse) {
         const newComments = createComment(file, chunk, aiResponse);
         if (newComments) {
@@ -86,7 +78,15 @@ async function analyzeCode(
 }
 
 function createMessage(file: File, chunk: Chunk, prDetails: PRDetails): string {
-  return `Review the following code diff in the file "${
+  return `Your task is to review pull requests. Instructions:
+- Provide the response in following JSON format:  {"reviews": [{"lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
+- Do not give positive comments or compliments.
+- Provide comments and suggestions ONLY if there is something to improve, otherwise "reviews" should be an empty array.
+- Write the comment in GitHub Markdown format.
+- Use the given description only for the overall context and only comment the code.
+- IMPORTANT: NEVER suggest adding comments to the code.
+
+Review the following code diff in the file "${
     file.to
   }" and take the pull request title and description into account when writing the response.
   
@@ -109,22 +109,19 @@ ${chunk.changes
 `;
 }
 
-async function getAIResponse(prompt: string, message: string): Promise<Array<{
+async function getAIResponse(message: string): Promise<Array<{
   lineNumber: string;
   reviewComment: string;
 }> | null> {
   try {
 
-    const response = await qianfan.completions({
+    const response = await qianfan.chat({
       messages: [
         {
           role: "user",
           content: message,
         }
-      ],
-      prompt: prompt,
-      temperature: 0.2,
-      top_p: 1
+      ]
     }, QIANFAN_MODEL);
 
     const res = (response as RespBase).result.trim() || "{}";
