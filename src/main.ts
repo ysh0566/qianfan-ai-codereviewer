@@ -123,9 +123,10 @@ async function getAIResponse(message: string): Promise<Array<{
         }
       ]
     }, QIANFAN_MODEL);
-
-    const res = (response as RespBase).result.trim() || "{}";
-    console.log(res)
+    let res = (response as RespBase).result.trim() || "{}";
+    if (res.startsWith("```json")) {
+      res = res.substring(7, res.length - 3)
+    }
     return JSON.parse(res).reviews;
   } catch (error) {
     console.error("Error:", error);
