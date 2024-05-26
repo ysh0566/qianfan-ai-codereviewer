@@ -128,6 +128,7 @@ async function getAIResponse(prompt: string, message: string): Promise<Array<{
     }, QIANFAN_MODEL);
 
     const res = (response as RespBase).result.trim() || "{}";
+    console.log(res)
     return JSON.parse(res).reviews;
   } catch (error) {
     console.error("Error:", error);
