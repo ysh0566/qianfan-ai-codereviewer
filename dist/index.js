@@ -53,7 +53,7 @@ const QIANFAN_AK = core.getInput("QIANFAN_AK");
 const QIANFAN_SK = core.getInput("QIANFAN_SK");
 const QIANFAN_MODEL = core.getInput("QIANFAN_MODEL");
 const octokit = new rest_1.Octokit({ auth: GITHUB_TOKEN });
-const qianfan = new src_1.Completions({ QIANFAN_AK: QIANFAN_AK, QIANFAN_SK: QIANFAN_SK });
+const qianfan = new src_1.ChatCompletion({ QIANFAN_AK: QIANFAN_AK, QIANFAN_SK: QIANFAN_SK });
 function getPRDetails() {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
@@ -87,20 +87,12 @@ function getDiff(owner, repo, pull_number) {
 function analyzeCode(parsedDiff, prDetails) {
     return __awaiter(this, void 0, void 0, function* () {
         const comments = [];
-        const prompt = `Your task is to review pull requests. Instructions:
-- Provide the response in following JSON format:  {"reviews": [{"lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
-- Do not give positive comments or compliments.
-- Provide comments and suggestions ONLY if there is something to improve, otherwise "reviews" should be an empty array.
-- Write the comment in GitHub Markdown format.
-- Use the given description only for the overall context and only comment the code.
-- IMPORTANT: NEVER suggest adding comments to the code.
-`;
         for (const file of parsedDiff) {
             if (file.to === "/dev/null")
                 continue; // Ignore deleted files
             for (const chunk of file.chunks) {
                 const message = createMessage(file, chunk, prDetails);
-                const aiResponse = yield getAIResponse(prompt, message);
+                const aiResponse = yield getAIResponse(message);
                 if (aiResponse) {
                     const newComments = createComment(file, chunk, aiResponse);
                     if (newComments) {
@@ -113,7 +105,15 @@ function analyzeCode(parsedDiff, prDetails) {
     });
 }
 function createMessage(file, chunk, prDetails) {
-    return `Review the following code diff in the file "${file.to}" and take the pull request title and description into account when writing the response.
+    return `Your task is to review pull requests. Instructions:
+- Provide the response in following JSON format:  {"reviews": [{"lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
+- Do not give positive comments or compliments.
+- Provide comments and suggestions ONLY if there is something to improve, otherwise "reviews" should be an empty array.
+- Write the comment in GitHub Markdown format.
+- Use the given description only for the overall context and only comment the code.
+- IMPORTANT: NEVER suggest adding comments to the code.
+
+Review the following code diff in the file "${file.to}" and take the pull request title and description into account when writing the response.
   
 Pull request title: ${prDetails.title}
 Pull request description:
@@ -133,22 +133,18 @@ ${chunk.changes
 \`\`\`
 `;
 }
-function getAIResponse(prompt, message) {
+function getAIResponse(message) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const response = yield qianfan.completions({
+            const response = yield qianfan.chat({
                 messages: [
                     {
                         role: "user",
                         content: message,
                     }
-                ],
-                prompt: prompt,
-                temperature: 0.2,
-                top_p: 1
+                ]
             }, QIANFAN_MODEL);
             const res = response.result.trim() || "{}";
-            console.log(res);
             return JSON.parse(res).reviews;
         }
         catch (error) {
@@ -229,7 +225,7 @@ main().catch((error) => {
     console.error("Error:", error);
     process.exit(1);
 });
-
+//# sourceMappingURL=main.js.map
 
 /***/ }),
 
