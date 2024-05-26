@@ -144,8 +144,11 @@ function getAIResponse(message) {
                     }
                 ]
             }, QIANFAN_MODEL);
-            console.log(response);
-            const res = response.result.trim() || "{}";
+            let res = response.result.trim() || "{}";
+            if (res.startsWith("```json")) {
+                res = res.substring(7, res.length - 3);
+            }
+            console.log(res);
             return JSON.parse(res).reviews;
         }
         catch (error) {
