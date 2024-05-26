@@ -1,4 +1,4 @@
-name: Code Review with OpenAI
+name: Code Review with Baidu Qianfan
 on:
   pull_request:
     types:
@@ -12,9 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Code Review
-        uses: freeedcom/ai-codereviewer@main
+        uses: ysh0566/qianfan-ai-codereviewer@main
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_MODEL: "gpt-4-1106-preview"
-          exclude: "yarn.lock,dist/**"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # The GITHUB_TOKEN is there by default so you just need to keep it like it is and not necessarily need to add it as secret as it will throw an error. [More Details](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret)
+          QIANFAN_AK: ${{ secrets.QIANFAN_AK }}
+          QIANFAN_SK: ${{ secrets.QIANFAN_SK }}
+          QIANFAN_MODEL: "ERNIE-Speed-8K" # Optional: defaults to "ERNIE-Speed-8K". It's free to use.
+          exclude: "**/*.json, **/*.md" # Optional: exclude patterns separated by commas
